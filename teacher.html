@@ -54,6 +54,36 @@
         <p id="login-msg" style="color: red;"></p>
     </div>
 
+
+<div class="card" id="settings-section" style="display:none; margin-bottom: 20px;">
+        <h2>Live Exam Controls</h2>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div>
+                <label>Status:</label>
+                <select id="set-status" style="width: 100%; padding: 10px; margin-top: 5px;">
+                    <option value="Active">Live (Accepting Answers)</option>
+                    <option value="Inactive">Paused (Locked)</option>
+                </select>
+            </div>
+            <div>
+                <label>Timer (Minutes): <small>(0 for no timer)</small></label>
+                <input type="number" id="set-duration" value="60">
+            </div>
+            <div>
+                <label>Start Time:</label>
+                <input type="datetime-local" id="set-start">
+            </div>
+            <div>
+                <label>End Time:</label>
+                <input type="datetime-local" id="set-end">
+            </div>
+        </div>
+        <button onclick="saveSettings()" style="margin-top: 15px; background-color: #2a9d8f;">Save Exam Settings</button>
+        <span id="settings-msg" style="margin-left: 10px; font-weight: bold; color: green;"></span>
+    </div>
+    
+    <!-- Your existing dashboard-section goes below this -->
+
     <div class="card" id="dashboard-section" style="display:none;">
         <h2>Exam Results Dashboard</h2>
         
@@ -77,6 +107,30 @@
             <tbody id="table-body"></tbody>
         </table>
     </div>
+<div class="card" id="live-section" style="display:none; margin-bottom: 20px; border-left: 5px solid #d90429;">
+        
+<div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <h2 style="margin: 0; color: #d90429;">🔴 Live Exam Leaderboard</h2>
+                <button onclick="clearLiveLeaderboard()" style="background-color: #e63946; padding: 6px 12px; font-size: 0.85em;">Clear Data for New Exam</button>
+            </div>
+            <span id="live-refresh-timer" style="font-size: 0.9em; color: gray;">Refreshing in 10s...</span>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Name (Roll)</th>
+                    <th>Current Question</th>
+                    <th>Live Score</th>
+                    <th>Last Active</th>
+                </tr>
+            </thead>
+            <tbody id="live-table-body"></tbody>
+        </table>
+    </div>
+
 
     <!-- The Answer Script Modal -->
     <div id="script-modal">
@@ -106,11 +160,10 @@
         let questionsData = [];
         let currentStudent = null;
 
-        function login() {
+    function login() {
             const pass = document.getElementById('admin-pass').value;
             document.getElementById('login-msg').innerText = "Authenticating & Loading data...";
             
-            // 1. Fetch Results securely
             fetch(`${WEB_APP_URL}?action=getResults&password=${pass}`)
                 .then(res => res.json())
                 .then(resultRes => {
@@ -119,16 +172,37 @@
                         return;
                     }
                     allResults = resultRes.data;
+                    questionsData = resultRes.questions;
                     
-                    // 2. Fetch Questions (needed to cross-reference answers for the PDF)
-                    fetch(WEB_APP_URL)
-                        .then(res => res.json())
-                        .then(qRes => {
-                            questionsData = qRes.data;
-                            document.getElementById('login-section').style.display = 'none';
-                            document.getElementById('dashboard-section').style.display = 'block';
-                            renderTable();
-                        });
+                    // Populate current settings
+                    if(resultRes.settings.Duration) document.getElementById('set-duration').value = resultRes.settings.Duration;
+                    if(resultRes.settings.StartTime) document.getElementById('set-start').value = resultRes.settings.StartTime;
+                    if(resultRes.settings.EndTime) document.getElementById('set-end').value = resultRes.settings.EndTime;
+                    if(resultRes.settings.Status) document.getElementById('set-status').value = resultRes.settings.Status;
+
+                    document.getElementById('login-section').style.display = 'none';
+                    document.getElementById('settings-section').style.display = 'block';
+                    document.getElementById('dashboard-section').style.display = 'block';
+                    renderTable();
+                });
+        }
+
+        function saveSettings() {
+            const pass = document.getElementById('admin-pass').value;
+            const duration = document.getElementById('set-duration').value;
+            const start = document.getElementById('set-start').value;
+            const end = document.getElementById('set-end').value;
+            const status = document.getElementById('set-status').value;
+
+            document.getElementById('settings-msg').innerText = "Saving...";
+            
+            fetch(`${WEB_APP_URL}?action=updateSettings&password=${pass}&duration=${duration}&startTime=${start}&endTime=${end}&status=${status}`)
+                .then(res => res.json())
+                .then(result => {
+                    if (result.status === "success") {
+                        document.getElementById('settings-msg').innerText = "Settings Saved!";
+                        setTimeout(() => document.getElementById('settings-msg').innerText = "", 3000);
+                    }
                 });
         }
 
@@ -158,7 +232,7 @@
             });
         }
 
-        function viewScript(index) {
+      function viewScript(index) {
             currentStudent = allResults[index];
             const answers = JSON.parse(currentStudent.Answer_Script); 
             
@@ -224,6 +298,77 @@
             // This opens WhatsApp with a pre-filled message, allowing you to easily attach the PDF you just downloaded.
             const text = encodeURIComponent(`Hello ${currentStudent.Name},\n\nYour Biology Mock Test results are ready.\nScore: ${currentStudent.Score}\n\nPlease find your detailed answer script attached below.`);
             window.open(`https://wa.me/?text=${text}`, '_blank');
+        }
+
+        let liveRefreshInterval;
+
+        // Call this inside your existing login() function right after settings are populated:
+        // document.getElementById('live-section').style.display = 'block';
+        // startLiveTracker();
+
+        function startLiveTracker() {
+            fetchLiveLeaderboard(); // Fetch immediately
+            
+            // Then fetch every 10 seconds automatically
+            let countdown = 10;
+            liveRefreshInterval = setInterval(() => {
+                countdown--;
+                document.getElementById('live-refresh-timer').innerText = `Refreshing in ${countdown}s...`;
+                
+                if (countdown <= 0) {
+                    fetchLiveLeaderboard();
+                    countdown = 10;
+                }
+            }, 1000);
+        }
+
+        function fetchLiveLeaderboard() {
+            const pass = document.getElementById('admin-pass').value;
+            fetch(`${WEB_APP_URL}?action=getLiveLeaderboard&password=${pass}`)
+                .then(res => res.json())
+                .then(result => {
+                    if (result.status === "success") {
+                        const tbody = document.getElementById('live-table-body');
+                        tbody.innerHTML = "";
+                        
+                        result.data.forEach((student, index) => {
+                            tbody.innerHTML += `
+                                <tr style="${index === 0 ? 'background-color: #f1faee; font-weight: bold;' : ''}">
+                                    <td>#${index + 1}</td>
+                                    <td>${student.name} (${student.roll})</td>
+                                    <td>Question ${student.q}</td>
+                                    <td style="color: green; font-weight: bold;">${student.score}</td>
+                                    <td style="font-size: 0.85em; color: gray;">${student.time}</td>
+                                </tr>
+                            `;
+                        });
+                    }
+                }).catch(e => console.log("Live fetch skipped this cycle"));
+        }
+
+
+        function clearLiveLeaderboard() {
+            // Safety check so you don't accidentally click it during a test
+            if (!confirm("Are you sure you want to clear the live tracker? Only do this before starting a brand new exam!")) {
+                return;
+            }
+
+            const pass = document.getElementById('admin-pass').value;
+            document.getElementById('live-refresh-timer').innerText = "Clearing old data...";
+
+            fetch(`${WEB_APP_URL}?action=clearLiveTracker&password=${pass}`)
+                .then(res => res.json())
+                .then(result => {
+                    if (result.status === "success") {
+                        document.getElementById('live-table-body').innerHTML = ""; 
+                        document.getElementById('live-refresh-timer').innerText = "Data cleared! Waiting for students...";
+                    } else {
+                        alert("Error clearing data. Check your password.");
+                    }
+                })
+                .catch(e => {
+                    alert("Network error while trying to clear the board.");
+                });
         }
     </script>
 </body>
