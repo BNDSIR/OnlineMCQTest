@@ -106,6 +106,60 @@
             gap: 10px;
             margin-top: 20px;
         }
+
+
+        /* Collapsible Floating Live Leaderboard */
+        .leaderboard-toggle-btn {
+            background-color: #2d6a4f;
+            color: white;
+            padding: 8px 14px;
+            font-size: 13px;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 12px;
+            width: auto;
+        }
+
+        #student-leaderboard-box {
+            display: none;
+            background: #ffffff;
+            border: 1px solid #d8e2dc;
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 18px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            max-height: 220px;
+            overflow-y: auto;
+        }
+
+        .lb-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .lb-table th {
+            text-align: left;
+            padding: 6px 8px;
+            background-color: #e9f5ed;
+            color: #1b4332;
+            border-bottom: 2px solid #b7e4c7;
+        }
+
+        .lb-table td {
+            padding: 6px 8px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .my-rank-row {
+            background-color: #fff3bf !important;
+            font-weight: bold;
+            border-left: 4px solid #f59f00;
+        }
     </style>
 </head>
 <body oncontextmenu="return false;"> <!-- Anti-cheat: Disables right-click -->
@@ -134,6 +188,28 @@
 
         <!-- 2. EXAM SCREEN -->
         <div id="exam-screen" class="card">
+
+<!-- Live Leaderboard Widget inside the Exam Card -->
+        <button type="button" class="leaderboard-toggle-btn" onclick="toggleStudentLeaderboard()">
+            🏆 <span>Live Leaderboard</span> <small id="lb-badge">(Tap to view)</small>
+        </button>
+
+        <div id="student-leaderboard-box">
+            <table class="lb-table">
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Student</th>
+                        <th>Q#</th>
+                        <th>Score</th>
+                    </tr>
+                </thead>
+                <tbody id="student-lb-body">
+                    <tr><td colspan="4" style="text-align:center;">Loading scores...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
             <div class="header-stats">
                 <span>Time: <span id="timer-display">60:00</span></span>
                 <span>Warnings: <span id="warning-display">0</span>/3</span>
@@ -170,18 +246,70 @@
         let studentProfile = { name: "", rollNo: "", className: "" };
 
         // --- 1. BULK FETCH QUESTIONS (Zero-Lag) ---
+       // --- 1. BULK FETCH & TIME VALIDATION ---
         window.onload = function() {
             fetch(WEB_APP_URL)
                 .then(response => response.json())
                 .then(result => {
                     questionsData = result.data;
-                    document.getElementById('loading-text').style.display = 'none';
-                    document.getElementById('login-form').style.display = 'block';
+                    const settings = result.settings;
+                    
+                    // Apply dynamic timer
+                    let examDuration = parseInt(settings.Duration);
+                    if(isNaN(examDuration)) examDuration = 60;
+                    timeRemaining = examDuration * 60;
+
+                    // Validate Time Window & Status
+                    const now = new Date().getTime();
+                    const startTime = new Date(settings.StartTime).getTime();
+                    const endTime = new Date(settings.EndTime).getTime();
+                    
+                    let canStart = true;
+                    let msg = "";
+                    
+                    if (settings.Status !== "Active") { 
+                        canStart = false; msg = "The exam is currently paused by the teacher."; 
+                    } else if (settings.StartTime && now < startTime) { 
+                        canStart = false; msg = "The exam has not started yet."; 
+                    } else if (settings.EndTime && now > endTime) { 
+                        canStart = false; msg = "The exam time has ended."; 
+                    }
+                    
+                    if (!canStart) {
+                        document.getElementById('loading-text').innerText = msg;
+                        document.getElementById('loading-text').style.color = "#d90429";
+                        document.getElementById('loading-text').style.fontWeight = "bold";
+                    } else {
+                        document.getElementById('loading-text').style.display = 'none';
+                        document.getElementById('login-form').style.display = 'block';
+                    }
                 })
                 .catch(err => {
                     document.getElementById('loading-text').innerText = "Error loading questions. Check connection.";
                 });
         };
+
+        // --- 6. DYNAMIC TIMER ---
+        function startTimer() {
+            if (timeRemaining <= 0) {
+                // If duration was set to 0, hide the timer text and don't run the countdown
+                document.getElementById('timer-display').innerText = "No Time Limit";
+                return;
+            }
+            
+            timerInterval = setInterval(() => {
+                timeRemaining--;
+                let m = Math.floor(timeRemaining / 60).toString().padStart(2, '0');
+                let s = (timeRemaining % 60).toString().padStart(2, '0');
+                document.getElementById('timer-display').innerText = `${m}:${s}`;
+                
+                if (timeRemaining <= 0) {
+                    clearInterval(timerInterval);
+                    alert("Time is up! Submitting automatically.");
+                    submitExam();
+                }
+            }, 1000);
+        }
 
         // --- 2. START EXAM & ANTI-CHEAT ---
         function startExam() {
@@ -209,6 +337,10 @@
             loadQuestion(0);
             startTimer();
             enableVisibilityTracking();
+
+            // Start background leaderboard sync every 12 seconds
+        fetchPublicLeaderboard();
+        publicLeaderboardInterval = setInterval(fetchPublicLeaderboard, 12000);
         }
 
         // --- 3. DYNAMIC WATERMARKING ---
@@ -279,30 +411,19 @@
             }
         }
 
-        function saveAnswer(qId, selectedOption) {
+    function saveAnswer(qId, selectedOption) {
             studentAnswers[qId] = selectedOption;
+            sendLivePulse(); // NEW: Updates teacher dashboard when they click an answer
         }
 
         function changeQuestion(step) {
             currentQIndex += step;
             loadQuestion(currentQIndex);
+            sendLivePulse(); // NEW: Updates teacher dashboard when they click Next
         }
 
         // --- 6. TIMER ---
-        function startTimer() {
-            timerInterval = setInterval(() => {
-                timeRemaining--;
-                let m = Math.floor(timeRemaining / 60).toString().padStart(2, '0');
-                let s = (timeRemaining % 60).toString().padStart(2, '0');
-                document.getElementById('timer-display').innerText = `${m}:${s}`;
-                
-                if (timeRemaining <= 0) {
-                    clearInterval(timerInterval);
-                    alert("Time is up! Submitting automatically.");
-                    submitExam();
-                }
-            }, 1000);
-        }
+       
 
         // --- 7. SUBMIT TO GOOGLE SHEETS ---
         function submitExam() {
@@ -338,6 +459,68 @@
             }).catch(err => {
                 alert("Network error during submission. Contact your teacher.");
             });
+
+            clearInterval(publicLeaderboardInterval);
+        }
+        // --- 8. LIVE PULSE TRACKER ---
+        function sendLivePulse() {
+            // Calculate current live score
+            let currentScore = 0;
+            questionsData.forEach(q => {
+                if(studentAnswers[q.Q_ID] === q.CorrectAnswer) {
+                    currentScore++;
+                }
+            });
+            
+            // Send background ping (does not slow down the UI)
+            const url = `${WEB_APP_URL}?action=updateLive&roll=${studentProfile.rollNo}&name=${encodeURIComponent(studentProfile.name)}&q=${currentQIndex + 1}&score=${currentScore}`;
+            fetch(url).catch(e => console.log("Pulse skipped")); 
+        }
+
+        let publicLeaderboardInterval;
+        let isLeaderboardOpen = false;
+
+        function toggleStudentLeaderboard() {
+            const box = document.getElementById('student-leaderboard-box');
+            isLeaderboardOpen = !isLeaderboardOpen;
+            box.style.display = isLeaderboardOpen ? 'block' : 'none';
+            document.getElementById('lb-badge').innerText = isLeaderboardOpen ? '(Tap to hide)' : '(Tap to view)';
+            
+            if (isLeaderboardOpen) {
+                fetchPublicLeaderboard();
+            }
+        }
+
+        function fetchPublicLeaderboard() {
+            fetch(`${WEB_APP_URL}?action=getPublicLeaderboard`)
+                .then(res => res.json())
+                .then(res => {
+                    if (res.status === "success") {
+                        const tbody = document.getElementById('student-lb-body');
+                        if (!tbody) return;
+                        tbody.innerHTML = "";
+
+                        if (res.data.length === 0) {
+                            tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:gray;">No scores yet</td></tr>`;
+                            return;
+                        }
+
+                        res.data.forEach((entry, idx) => {
+                            const isMe = (entry.name.toLowerCase() === studentProfile.name.toLowerCase());
+                            const rankMedal = idx === 0 ? "🥇 1" : (idx === 1 ? "🥈 2" : (idx === 2 ? "🥉 3" : `#${idx + 1}`));
+
+                            tbody.innerHTML += `
+                                <tr class="${isMe ? 'my-rank-row' : ''}">
+                                    <td>${rankMedal}</td>
+                                    <td>${entry.name} ${isMe ? '(You)' : ''}</td>
+                                    <td>Q${entry.q}</td>
+                                    <td style="color:#2d6a4f; font-weight:bold;">${entry.score} pts</td>
+                                </tr>
+                            `;
+                        });
+                    }
+                })
+                .catch(() => console.log("Public leaderboard sync delayed."));
         }
     </script>
 </body>
