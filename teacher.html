@@ -160,7 +160,7 @@
 
         function viewScript(index) {
             currentStudent = allResults[index];
-            const answers = JSON.parse(currentStudent.Answer_Script); // Parse the stored JSON string
+            const answers = JSON.parse(currentStudent.Answer_Script); 
             
             document.getElementById('student-details-header').innerHTML = `
                 <strong>Name:</strong> ${currentStudent.Name} &nbsp;|&nbsp; 
@@ -170,16 +170,31 @@
 
             let scriptHTML = "";
             questionsData.forEach((q, i) => {
-                const studentAns = answers[q.Q_ID] || "Not Attempted";
-                const isCorrect = (studentAns === q.CorrectAnswer);
+                const studentAnsKey = answers[q.Q_ID]; 
+                const isAttempted = !!studentAnsKey; 
+                const isCorrect = (studentAnsKey === q.CorrectAnswer);
+                
                 const statusClass = isCorrect ? "correct" : "incorrect";
-                const statusIcon = isCorrect ? "✓" : "✗";
+                const statusIcon = isCorrect ? "✓" : (isAttempted ? "✗" : "-");
 
+                const studentAnsText = isAttempted ? q[studentAnsKey] : "Not Attempted";
+                const correctAnsText = q[q.CorrectAnswer];
+
+                // Build the HTML for the PDF including all 4 options
                 scriptHTML += `
                     <div class="q-block">
-                        <p><strong>Q${i+1}.</strong> ${q.Question}</p>
-                        <p>Your Answer: <span class="${statusClass}">${studentAns} ${statusIcon}</span></p>
-                        ${!isCorrect ? `<p style="color:gray; font-size: 0.9em;">Correct Answer was: ${q.CorrectAnswer}</p>` : ''}
+                        <p style="margin-bottom: 8px;"><strong>Q${i+1}.</strong> ${q.Question}</p>
+                        
+                        <!-- The 4 Options Displayed -->
+                        <div style="margin-left: 15px; font-size: 0.95em; color: #555; margin-bottom: 12px; line-height: 1.4;">
+                            <div><strong>A)</strong> ${q.OptionA}</div>
+                            <div><strong>B)</strong> ${q.OptionB}</div>
+                            <div><strong>C)</strong> ${q.OptionC}</div>
+                            <div><strong>D)</strong> ${q.OptionD}</div>
+                        </div>
+                        
+                        <p style="margin-top: 0; margin-bottom: 4px;">Your Answer: <span class="${statusClass}">${studentAnsText} ${statusIcon}</span></p>
+                        ${!isCorrect ? `<p style="color:gray; font-size: 0.9em; margin-top: 0;">Correct Answer was: ${correctAnsText}</p>` : ''}
                     </div>
                 `;
             });
