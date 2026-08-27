@@ -474,7 +474,7 @@
             
             // Send background ping (does not slow down the UI)
             const url = `${WEB_APP_URL}?action=updateLive&roll=${studentProfile.rollNo}&name=${encodeURIComponent(studentProfile.name)}&q=${currentQIndex + 1}&score=${currentScore}`;
-            fetch(url).catch(e => console.log("Pulse skipped")); 
+           fetch(url, { mode: 'no-cors' }).catch(e => console.log("Pulse skipped"));
         }
 
         let publicLeaderboardInterval;
