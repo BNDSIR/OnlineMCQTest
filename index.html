@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Biology Mock Test</title>
+    <style>
+        /* Eye-Friendly & Mobile-First CSS */
+        :root {
+            --bg-color: #f4f7f6; /* Soft sage/off-white to reduce eye strain */
+            --card-bg: #ffffff;
+            --primary: #2d6a4f; /* Biology green */
+            --text-main: #333333;
+        }
+
+        /* Anti-Cheat: Disable text selection */
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            user-select: none; 
+            -webkit-user-select: none;
+        }
+
+        /* Dynamic Watermark Overlay */
+        #watermark-layer {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            pointer-events: none; /* Allows clicking through it */
+            z-index: 9999;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+
+        input[type="text"], input[type="number"] {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0 20px 0;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+
+        button {
+            background-color: var(--primary);
+            color: white;
+            padding: 14px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            font-weight: bold;
+        }
+
+        button:disabled { background-color: #999; }
+
+        /* Exam Interface */
+        #exam-screen { display: none; }
+        
+        .header-stats {
+            display: flex;
+            justify-content: space-between;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #d90429; /* Red for timer/warnings */
+        }
+
+        .option-label {
+            display: block;
+            padding: 15px;
+            margin-bottom: 10px;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .option-label input { margin-right: 10px; }
+        
+        .question-image {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: none;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body oncontextmenu="return false;"> <!-- Anti-cheat: Disables right-click -->
+
+    <div id="watermark-layer"></div>
+
+    <div class="container">
+        <!-- 1. LOGIN SCREEN -->
+        <div id="login-screen" class="card">
+            <h2>Biology MCQ Portal</h2>
+            <p id="loading-text">Loading exam data... Please wait.</p>
+            
+            <div id="login-form" style="display:none;">
+                <label>Full Name</label>
+                <input type="text" id="student-name" required>
+                
+                <label>Roll Number</label>
+                <input type="number" id="student-roll" required>
+                
+                <label>Class / Section</label>
+                <input type="text" id="student-class" required>
+                
+                <button onclick="startExam()">Start Exam (Enters Fullscreen)</button>
+            </div>
+        </div>
+
+        <!-- 2. EXAM SCREEN -->
+        <div id="exam-screen" class="card">
+            <div class="header-stats">
+                <span>Time: <span id="timer-display">60:00</span></span>
+                <span>Warnings: <span id="warning-display">0</span>/3</span>
+            </div>
+
+            <h3 id="question-text">Question will appear here</h3>
+            <img id="question-image" class="question-image" src="" alt="Diagram">
+            
+            <div id="options-container">
+                <!-- Options injected via JavaScript -->
+            </div>
+
+            <div class="nav-buttons">
+                <button id="btn-prev" onclick="changeQuestion(-1)">Previous</button>
+                <button id="btn-next" onclick="changeQuestion(1)">Next</button>
+            </div>
+            <button id="btn-submit" onclick="submitExam()" style="margin-top: 15px; background-color: #d90429; display: none;">Submit Exam</button>
+        </div>
+    </div>
+
+    <script>
+        // --- CONFIGURATION ---
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxNvXHADMVIGy7DR9qTx1PjGIwkvgVDEgQDop6mXl3FGWUUh3OgsppKpod_4CoBclUK6w/exec"; // PASTE YOUR SCRIPT URL HERE
+        const EXAM_TIME_MINUTES = 60;
+        
+        // --- STATE VARIABLES ---
+        let questionsData = [];
+        let studentAnswers = {};
+        let currentQIndex = 0;
+        let warningsCount = 0;
+        let timerInterval;
+        let timeRemaining = EXAM_TIME_MINUTES * 60;
+        
+        let studentProfile = { name: "", rollNo: "", className: "" };
+
+        // --- 1. BULK FETCH QUESTIONS (Zero-Lag) ---
+        window.onload = function() {
+            fetch(WEB_APP_URL)
+                .then(response => response.json())
+                .then(result => {
+                    questionsData = result.data;
+                    document.getElementById('loading-text').style.display = 'none';
+                    document.getElementById('login-form').style.display = 'block';
+                })
+                .catch(err => {
+                    document.getElementById('loading-text').innerText = "Error loading questions. Check connection.";
+                });
+        };
+
+        // --- 2. START EXAM & ANTI-CHEAT ---
+        function startExam() {
+            studentProfile.name = document.getElementById('student-name').value;
+            studentProfile.rollNo = document.getElementById('student-roll').value;
+            studentProfile.className = document.getElementById('student-class').value;
+
+            if(!studentProfile.name || !studentProfile.rollNo) {
+                alert("Please fill all details.");
+                return;
+            }
+
+            // Force Fullscreen
+            let elem = document.documentElement;
+            if (elem.requestFullscreen) { elem.requestFullscreen(); }
+
+            // Generate Dynamic Watermark
+            generateWatermark(`${studentProfile.name} - ${studentProfile.rollNo}`);
+
+            // Switch UI
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('exam-screen').style.display = 'block';
+
+            // Start logic
+            loadQuestion(0);
+            startTimer();
+            enableVisibilityTracking();
+        }
+
+        // --- 3. DYNAMIC WATERMARKING ---
+        function generateWatermark(text) {
+            // Creates a faint, repeating SVG background pattern
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="250" height="150">
+                <text x="10" y="100" transform="rotate(-30 100 100)" fill="rgba(0,0,0,0.06)" font-size="18" font-family="Arial">${text}</text>
+            </svg>`;
+            const encoded = btoa(svg);
+            document.getElementById('watermark-layer').style.backgroundImage = `url(data:image/svg+xml;base64,${encoded})`;
+        }
+
+        // --- 4. VISIBILITY TRACKING (Tab Switching) ---
+        function enableVisibilityTracking() {
+            document.addEventListener("visibilitychange", () => {
+                if (document.hidden) {
+                    warningsCount++;
+                    document.getElementById('warning-display').innerText = warningsCount;
+                    alert(`WARNING: You have switched tabs or minimized the exam. This is warning ${warningsCount}.`);
+                    
+                    if(warningsCount >= 3) {
+                        alert("Maximum warnings reached. Auto-submitting exam.");
+                        submitExam();
+                    }
+                }
+            });
+        }
+
+        // --- 5. EXAM ENGINE ---
+        function loadQuestion(index) {
+            const q = questionsData[index];
+            document.getElementById('question-text').innerText = `Q${index + 1}. ${q.Question}`;
+            
+            // Handle Images
+            const imgEl = document.getElementById('question-image');
+            if (q.ImageURL && q.ImageURL.trim() !== "") {
+                imgEl.src = q.ImageURL;
+                imgEl.style.display = 'block';
+            } else {
+                imgEl.style.display = 'none';
+            }
+
+            // Handle Options
+            const optsContainer = document.getElementById('options-container');
+            optsContainer.innerHTML = '';
+            
+            ['OptionA', 'OptionB', 'OptionC', 'OptionD'].forEach(opt => {
+                if(q[opt]) {
+                    const isChecked = studentAnswers[q.Q_ID] === opt ? "checked" : "";
+                    optsContainer.innerHTML += `
+                        <label class="option-label">
+                            <input type="radio" name="q${q.Q_ID}" value="${opt}" ${isChecked} 
+                                   onchange="saveAnswer('${q.Q_ID}', '${opt}')">
+                            ${q[opt]}
+                        </label>`;
+                }
+            });
+
+            // Button visibility
+            document.getElementById('btn-prev').disabled = (index === 0);
+            
+            if (index === questionsData.length - 1) {
+                document.getElementById('btn-next').style.display = 'none';
+                document.getElementById('btn-submit').style.display = 'block';
+            } else {
+                document.getElementById('btn-next').style.display = 'block';
+                document.getElementById('btn-submit').style.display = 'none';
+            }
+        }
+
+        function saveAnswer(qId, selectedOption) {
+            studentAnswers[qId] = selectedOption;
+        }
+
+        function changeQuestion(step) {
+            currentQIndex += step;
+            loadQuestion(currentQIndex);
+        }
+
+        // --- 6. TIMER ---
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                timeRemaining--;
+                let m = Math.floor(timeRemaining / 60).toString().padStart(2, '0');
+                let s = (timeRemaining % 60).toString().padStart(2, '0');
+                document.getElementById('timer-display').innerText = `${m}:${s}`;
+                
+                if (timeRemaining <= 0) {
+                    clearInterval(timerInterval);
+                    alert("Time is up! Submitting automatically.");
+                    submitExam();
+                }
+            }, 1000);
+        }
+
+        // --- 7. SUBMIT TO GOOGLE SHEETS ---
+        function submitExam() {
+            clearInterval(timerInterval);
+            document.getElementById('exam-screen').innerHTML = "<h3>Submitting your exam... Please wait.</h3>";
+
+            // Calculate Score locally (optional, but good for immediate payload)
+            let score = 0;
+            questionsData.forEach(q => {
+                if(studentAnswers[q.Q_ID] === q.CorrectAnswer) {
+                    score++;
+                }
+            });
+
+            const payload = {
+                name: studentProfile.name,
+                rollNo: studentProfile.rollNo,
+                className: studentProfile.className,
+                score: score,
+                warnings: warningsCount,
+                answerScript: studentAnswers
+            };
+
+            fetch(WEB_APP_URL, {
+                method: 'POST',
+                mode: 'no-cors', // Solves typical CORS issues on static pages
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            }).then(() => {
+                document.getElementById('exam-screen').innerHTML = `
+                    <h3>Exam Submitted Successfully!</h3>
+                    <p>You may now close this window.</p>`;
+            }).catch(err => {
+                alert("Network error during submission. Contact your teacher.");
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Dashboard</title>
+    <!-- Library to convert HTML to PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #f4f7f6;
+            --primary: #1d3557;
+            --secondary: #457b9d;
+            --text-main: #333333;
+        }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg-color); padding: 20px; }
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); max-width: 900px; margin: 0 auto; }
+        
+        input, button { padding: 10px; margin: 5px 0; border-radius: 5px; border: 1px solid #ccc; }
+        button { background: var(--primary); color: white; cursor: pointer; border: none; font-weight: bold; }
+        button:hover { background: var(--secondary); }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background-color: var(--primary); color: white; }
+        
+        /* Modal for viewing the answer script */
+        #script-modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); overflow-y: auto; padding-top: 20px;
+        }
+        .modal-content {
+            background: white; max-width: 800px; margin: auto; padding: 30px; border-radius: 8px;
+        }
+        .modal-actions { display: flex; gap: 10px; margin-bottom: 20px; }
+        .btn-whatsapp { background-color: #25D366; } /* WhatsApp Green */
+        .btn-close { background-color: #e63946; }
+
+        /* The specific area to be converted to PDF */
+        #pdf-content { padding: 20px; }
+        .pdf-header { text-align: center; border-bottom: 2px solid #ccc; padding-bottom: 10px; margin-bottom: 20px; }
+        .q-block { margin-bottom: 15px; padding: 10px; border: 1px solid #eee; border-radius: 5px; }
+        .correct { color: green; font-weight: bold; }
+        .incorrect { color: red; font-weight: bold; }
+        .filters { display: flex; gap: 15px; margin-top: 15px; }
+    </style>
+</head>
+<body>
+
+    <div class="card" id="login-section">
+        <h2>Teacher Login</h2>
+        <input type="password" id="admin-pass" placeholder="Enter Password">
+        <button onclick="login()">Access Records</button>
+        <p id="login-msg" style="color: red;"></p>
+    </div>
+
+    <div class="card" id="dashboard-section" style="display:none;">
+        <h2>Exam Results Dashboard</h2>
+        
+        <div class="filters">
+            <input type="text" id="filter-class" placeholder="Filter by Class" onkeyup="renderTable()">
+            <input type="text" id="filter-date" placeholder="Filter by Date (YYYY-MM-DD)" onkeyup="renderTable()">
+        </div>
+
+        <table id="results-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Name</th>
+                    <th>Roll No</th>
+                    <th>Class</th>
+                    <th>Score</th>
+                    <th>Warnings</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="table-body"></tbody>
+        </table>
+    </div>
+
+    <!-- The Answer Script Modal -->
+    <div id="script-modal">
+        <div class="modal-content">
+            <div class="modal-actions">
+                <button class="btn-close" onclick="closeModal()">Close</button>
+                <button onclick="downloadPDF()">1. Download PDF Script</button>
+                <button class="btn-whatsapp" onclick="shareWhatsApp()">2. Share via WhatsApp</button>
+            </div>
+            
+            <!-- This specific div gets converted to the PDF -->
+            <div id="pdf-content">
+                <div class="pdf-header">
+                    <h2>.............</h2>
+                    <h3>Biology - Mock Test Result</h3>
+                    <p id="student-details-header"></p>
+                </div>
+                <div id="script-body"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxNvXHADMVIGy7DR9qTx1PjGIwkvgVDEgQDop6mXl3FGWUUh3OgsppKpod_4CoBclUK6w/exec"; // Paste your script URL here
+        
+        let allResults = [];
+        let questionsData = [];
+        let currentStudent = null;
+
+        function login() {
+            const pass = document.getElementById('admin-pass').value;
+            document.getElementById('login-msg').innerText = "Authenticating & Loading data...";
+            
+            // 1. Fetch Results securely
+            fetch(`${WEB_APP_URL}?action=getResults&password=${pass}`)
+                .then(res => res.json())
+                .then(resultRes => {
+                    if (resultRes.status === "error") {
+                        document.getElementById('login-msg').innerText = resultRes.message;
+                        return;
+                    }
+                    allResults = resultRes.data;
+                    
+                    // 2. Fetch Questions (needed to cross-reference answers for the PDF)
+                    fetch(WEB_APP_URL)
+                        .then(res => res.json())
+                        .then(qRes => {
+                            questionsData = qRes.data;
+                            document.getElementById('login-section').style.display = 'none';
+                            document.getElementById('dashboard-section').style.display = 'block';
+                            renderTable();
+                        });
+                });
+        }
+
+        function renderTable() {
+            const filterClass = document.getElementById('filter-class').value.toLowerCase();
+            const filterDate = document.getElementById('filter-date').value.toLowerCase();
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = "";
+
+            allResults.forEach((student, index) => {
+                const dateStr = new Date(student.Timestamp).toLocaleDateString();
+                
+                // Filtering Logic
+                if (student.Class.toLowerCase().includes(filterClass) && dateStr.includes(filterDate)) {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${dateStr}</td>
+                            <td>${student.Name}</td>
+                            <td>${student.Roll_No}</td>
+                            <td>${student.Class}</td>
+                            <td><strong>${student.Score}</strong></td>
+                            <td style="color: ${student.Warnings > 0 ? 'red' : 'black'};">${student.Warnings}</td>
+                            <td><button onclick="viewScript(${index})">View Script</button></td>
+                        </tr>
+                    `;
+                }
+            });
+        }
+
+        function viewScript(index) {
+            currentStudent = allResults[index];
+            const answers = JSON.parse(currentStudent.Answer_Script); // Parse the stored JSON string
+            
+            document.getElementById('student-details-header').innerHTML = `
+                <strong>Name:</strong> ${currentStudent.Name} &nbsp;|&nbsp; 
+                <strong>Roll No:</strong> ${currentStudent.Roll_No} &nbsp;|&nbsp; 
+                <strong>Score:</strong> ${currentStudent.Score}
+            `;
+
+            let scriptHTML = "";
+            questionsData.forEach((q, i) => {
+                const studentAns = answers[q.Q_ID] || "Not Attempted";
+                const isCorrect = (studentAns === q.CorrectAnswer);
+                const statusClass = isCorrect ? "correct" : "incorrect";
+                const statusIcon = isCorrect ? "✓" : "✗";
+
+                scriptHTML += `
+                    <div class="q-block">
+                        <p><strong>Q${i+1}.</strong> ${q.Question}</p>
+                        <p>Your Answer: <span class="${statusClass}">${studentAns} ${statusIcon}</span></p>
+                        ${!isCorrect ? `<p style="color:gray; font-size: 0.9em;">Correct Answer was: ${q.CorrectAnswer}</p>` : ''}
+                    </div>
+                `;
+            });
+
+            document.getElementById('script-body').innerHTML = scriptHTML;
+            document.getElementById('script-modal').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('script-modal').style.display = 'none';
+        }
+
+        function downloadPDF() {
+            const element = document.getElementById('pdf-content');
+            const opt = {
+                margin:       10,
+                filename:     `${currentStudent.Name}_Bio_Test.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2 },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+            html2pdf().set(opt).from(element).save();
+        }
+
+        function shareWhatsApp() {
+            // Note: Web APIs cannot directly attach files. 
+            // This opens WhatsApp with a pre-filled message, allowing you to easily attach the PDF you just downloaded.
+            const text = encodeURIComponent(`Hello ${currentStudent.Name},\n\nYour Biology Mock Test results are ready.\nScore: ${currentStudent.Score}\n\nPlease find your detailed answer script attached below.`);
+            window.open(`https://wa.me/?text=${text}`, '_blank');
+        }
+    </script>
+</body>
+</html>
