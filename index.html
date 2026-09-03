@@ -7,13 +7,12 @@
     <style>
         /* Eye-Friendly & Mobile-First CSS */
         :root {
-            --bg-color: #f4f7f6; /* Soft sage/off-white to reduce eye strain */
+            --bg-color: #f4f7f6;
             --card-bg: #ffffff;
-            --primary: #2d6a4f; /* Biology green */
+            --primary: #2d6a4f;
             --text-main: #333333;
         }
 
-        /* Anti-Cheat: Disable text selection */
         body {
             background-color: var(--bg-color);
             color: var(--text-main);
@@ -24,145 +23,97 @@
             -webkit-user-select: none;
         }
 
-        /* Dynamic Watermark Overlay */
         #watermark-layer {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            pointer-events: none; /* Allows clicking through it */
-            z-index: 9999;
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            pointer-events: none; z-index: 9999;
         }
 
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        
         .card {
-            background: var(--card-bg);
-            padding: 25px;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-            margin-bottom: 20px;
+            background: var(--card-bg); padding: 25px;
+            border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px;
         }
 
         input[type="text"], input[type="number"] {
-            width: 100%;
-            padding: 12px;
-            margin: 8px 0 20px 0;
-            box-sizing: border-box;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            font-size: 16px;
+            width: 100%; padding: 12px; margin: 8px 0 20px 0;
+            box-sizing: border-box; border: 1px solid #ccc; border-radius: 6px; font-size: 16px;
         }
 
         button {
-            background-color: var(--primary);
-            color: white;
-            padding: 14px 20px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 16px;
-            width: 100%;
-            font-weight: bold;
+            background-color: var(--primary); color: white; padding: 14px 20px;
+            border: none; border-radius: 6px; cursor: pointer; font-size: 16px; width: 100%; font-weight: bold;
         }
-
         button:disabled { background-color: #999; }
 
-        /* Exam Interface */
         #exam-screen { display: none; }
         
+        /* TOP WIDGET BUTTONS CONTAINER (Side-by-Side) */
+        .top-widgets {
+            display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;
+        }
+
+        .toggle-btn {
+            background-color: #2d6a4f; color: white; padding: 8px 12px; font-size: 13px;
+            border: none; border-radius: 20px; cursor: pointer; display: inline-flex;
+            align-items: center; gap: 5px; flex-grow: 1; justify-content: center;
+        }
+        .toggle-btn.palette { background-color: #1d3557; } 
+
+        .collapsible-box {
+            display: none; background: #ffffff; border: 1px solid #d8e2dc;
+            border-radius: 10px; padding: 12px; margin-bottom: 18px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06); max-height: 220px; overflow-y: auto;
+        }
+
+        /* Leaderboard Table */
+        .lb-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .lb-table th { text-align: left; padding: 6px 8px; background-color: #e9f5ed; color: #1b4332; border-bottom: 2px solid #b7e4c7; }
+        .lb-table td { padding: 6px 8px; border-bottom: 1px solid #eee; }
+        .my-rank-row { background-color: #fff3bf !important; font-weight: bold; border-left: 4px solid #f59f00; }
+
+        /* Question Palette Grid */
+        .palette-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(42px, 1fr)); gap: 8px; }
+        .palette-btn {
+            padding: 10px 0; text-align: center; border-radius: 5px;
+            border: 1px solid #ccc; background: #f8f9fa; cursor: pointer;
+            font-weight: bold; font-size: 14px; transition: all 0.2s;
+        }
+        .palette-btn:hover { background: #e9ecef; }
+        .palette-btn.current { background: #457b9d; color: white; border-color: #1d3557; } 
+        .palette-btn.answered { background: #2d6a4f; color: white; border-color: #1b4332; } 
+        .palette-btn.answered.current { background: #1b4332; } 
+
+        /* NEW: Top Scorer Flash Message */
+        @keyframes slowBlink {
+            0% { opacity: 0; }
+            20% { opacity: 1; }
+            80% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+        #top-scorer-flash {
+            display: none; background-color: #8b0000; color: white; text-align: center;
+            padding: 10px; font-weight: bold; border-radius: 6px; margin-bottom: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
         .header-stats {
-            display: flex;
-            justify-content: space-between;
-            font-weight: bold;
-            margin-bottom: 20px;
-            color: #d90429; /* Red for timer/warnings */
+            display: flex; justify-content: space-between; font-weight: bold;
+            margin-bottom: 20px; color: #d90429; border-top: 1px solid #eee; padding-top: 15px;
         }
 
         .option-label {
-            display: block;
-            padding: 15px;
-            margin-bottom: 10px;
-            background-color: #f8f9fa;
-            border: 1px solid #dee2e6;
-            border-radius: 8px;
-            cursor: pointer;
+            display: block; padding: 15px; margin-bottom: 10px;
+            background-color: #f8f9fa; border: 1px solid #dee2e6;
+            border-radius: 8px; cursor: pointer;
         }
-
         .option-label input { margin-right: 10px; }
         
-        .question-image {
-            max-width: 100%;
-            height: auto;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            display: none;
-        }
-
-        .nav-buttons {
-            display: flex;
-            gap: 10px;
-            margin-top: 20px;
-        }
-
-
-        /* Collapsible Floating Live Leaderboard */
-        .leaderboard-toggle-btn {
-            background-color: #2d6a4f;
-            color: white;
-            padding: 8px 14px;
-            font-size: 13px;
-            border: none;
-            border-radius: 20px;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            margin-bottom: 12px;
-            width: auto;
-        }
-
-        #student-leaderboard-box {
-            display: none;
-            background: #ffffff;
-            border: 1px solid #d8e2dc;
-            border-radius: 10px;
-            padding: 12px;
-            margin-bottom: 18px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-            max-height: 220px;
-            overflow-y: auto;
-        }
-
-        .lb-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 13px;
-        }
-
-        .lb-table th {
-            text-align: left;
-            padding: 6px 8px;
-            background-color: #e9f5ed;
-            color: #1b4332;
-            border-bottom: 2px solid #b7e4c7;
-        }
-
-        .lb-table td {
-            padding: 6px 8px;
-            border-bottom: 1px solid #eee;
-        }
-
-        .my-rank-row {
-            background-color: #fff3bf !important;
-            font-weight: bold;
-            border-left: 4px solid #f59f00;
-        }
+        .question-image { max-width: 100%; height: auto; border-radius: 8px; margin-bottom: 15px; display: none; }
+        .nav-buttons { display: flex; gap: 10px; margin-top: 20px; }
     </style>
 </head>
-<body oncontextmenu="return false;"> <!-- Anti-cheat: Disables right-click -->
+<body oncontextmenu="return false;">
 
     <div id="watermark-layer"></div>
 
@@ -176,46 +127,52 @@
                 <h4 style="margin-top: 0; color: #1b4332;">📢 Exam Notice</h4>
                 <p id="notice-text" style="margin-bottom: 0; font-size: 14.5px; line-height: 1.5; white-space: pre-wrap;"></p>
             </div>
+            
             <p id="loading-text">Loading exam data... Please wait.</p>
             
             <div id="login-form" style="display:none;">
                 <label>Full Name</label>
                 <input type="text" id="student-name" required>
-                
                 <label>Roll Number</label>
                 <input type="number" id="student-roll" required>
-                
                 <label>Class / Section</label>
                 <input type="text" id="student-class" required>
-                
                 <button onclick="startExam()">Start Exam (Enters Fullscreen)</button>
             </div>
         </div>
 
         <!-- 2. EXAM SCREEN -->
         <div id="exam-screen" class="card">
+            
+            <!-- NEW: Top Scorer Flash Message -->
+            <div id="top-scorer-flash"></div>
 
-<!-- Live Leaderboard Widget inside the Exam Card -->
-        <button type="button" class="leaderboard-toggle-btn" onclick="toggleStudentLeaderboard()">
-            🏆 <span>Live Leaderboard</span> <small id="lb-badge">(Tap to view)</small>
-        </button>
+            <!-- SIDE-BY-SIDE TOGGLE BUTTONS -->
+            <div class="top-widgets">
+                <button type="button" class="toggle-btn" onclick="toggleStudentLeaderboard()">
+                    🏆 <span>Leaderboard</span> <small id="lb-badge">(Tap)</small>
+                </button>
+                <button type="button" class="toggle-btn palette" onclick="togglePalette()">
+                    🔢 <span>Question Grid</span> <small id="pal-badge">(Tap)</small>
+                </button>
+            </div>
 
-        <div id="student-leaderboard-box">
-            <table class="lb-table">
-                <thead>
-                    <tr>
-                        <th>Rank</th>
-                        <th>Student</th>
-                        <th>Q#</th>
-                        <th>Score</th>
-                    </tr>
-                </thead>
-                <tbody id="student-lb-body">
-                    <tr><td colspan="4" style="text-align:center;">Loading scores...</td></tr>
-                </tbody>
-            </table>
-        </div>
+            <!-- COLLAPSIBLE LEADERBOARD -->
+            <div id="student-leaderboard-box" class="collapsible-box">
+                <table class="lb-table">
+                    <thead><tr><th>Rank</th><th>Student</th><th>Q#</th><th>Score</th></tr></thead>
+                    <tbody id="student-lb-body">
+                        <tr><td colspan="4" style="text-align:center;">Loading scores...</td></tr>
+                    </tbody>
+                </table>
+            </div>
 
+            <!-- COLLAPSIBLE QUESTION PALETTE -->
+            <div id="palette-box-wrapper" class="collapsible-box">
+                <div class="palette-grid" id="question-palette"></div>
+            </div>
+
+            <!-- STATS (Timer & Warnings) -->
             <div class="header-stats">
                 <span>Time: <span id="timer-display">60:00</span></span>
                 <span>Warnings: <span id="warning-display">0</span>/3</span>
@@ -224,35 +181,32 @@
             <h3 id="question-text">Question will appear here</h3>
             <img id="question-image" class="question-image" src="" alt="Diagram">
             
-            <div id="options-container">
-                <!-- Options injected via JavaScript -->
-            </div>
+            <div id="options-container"></div>
 
             <div class="nav-buttons">
                 <button id="btn-prev" onclick="changeQuestion(-1)">Previous</button>
                 <button id="btn-next" onclick="changeQuestion(1)">Next</button>
             </div>
-            <button id="btn-submit" onclick="submitExam()" style="margin-top: 15px; background-color: #d90429; display: none;">Submit Exam</button>
+            <button id="btn-submit" onclick="submitExam()" style="margin-top: 25px; background-color: #d90429;">Submit Exam</button>
         </div>
     </div>
 
     <script>
-        // --- CONFIGURATION ---
-        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxNvXHADMVIGy7DR9qTx1PjGIwkvgVDEgQDop6mXl3FGWUUh3OgsppKpod_4CoBclUK6w/exec"; // PASTE YOUR SCRIPT URL HERE
-        const EXAM_TIME_MINUTES = 60;
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxNvXHADMVIGy7DR9qTx1PjGIwkvgVDEgQDop6mXl3FGWUUh3OgsppKpod_4CoBclUK6w/exec";
         
-        // --- STATE VARIABLES ---
         let questionsData = [];
         let studentAnswers = {};
         let currentQIndex = 0;
         let warningsCount = 0;
         let timerInterval;
-        let timeRemaining = EXAM_TIME_MINUTES * 60;
-        
+        let timeRemaining = 0;
         let studentProfile = { name: "", rollNo: "", className: "" };
 
-        // --- 1. BULK FETCH QUESTIONS (Zero-Lag) ---
-       // --- 1. BULK FETCH & TIME VALIDATION ---
+        // UI State Variables
+        let publicLeaderboardInterval;
+        let isLeaderboardOpen = false;
+        let isPaletteOpen = false;
+
         window.onload = function() {
             fetch(WEB_APP_URL)
                 .then(response => response.json())
@@ -260,20 +214,16 @@
                     questionsData = result.data;
                     const settings = result.settings;
                     
-                    // Apply dynamic timer
                     let examDuration = parseInt(settings.Duration);
                     if(isNaN(examDuration)) examDuration = 60;
                     timeRemaining = examDuration * 60;
 
-                    // Check and display the Teacher's Notice
+                    // Display Teacher Notice
                     if (settings.NoticeMessage && settings.NoticeMessage.trim() !== "") {
-                        document.getElementById('notice-text').innerText = settings.NoticeMessage;
+                        document.getElementById('notice-text').innerText = decodeURIComponent(settings.NoticeMessage);
                         document.getElementById('notice-board').style.display = 'block';
-                    } else {
-                        document.getElementById('notice-board').style.display = 'none';
                     }
 
-                    // Validate Time Window & Status
                     const now = new Date().getTime();
                     const startTime = new Date(settings.StartTime).getTime();
                     const endTime = new Date(settings.EndTime).getTime();
@@ -281,13 +231,9 @@
                     let canStart = true;
                     let msg = "";
                     
-                    if (settings.Status !== "Active") { 
-                        canStart = false; msg = "The exam is currently paused by the teacher."; 
-                    } else if (settings.StartTime && now < startTime) { 
-                        canStart = false; msg = "The exam has not started yet."; 
-                    } else if (settings.EndTime && now > endTime) { 
-                        canStart = false; msg = "The exam time has ended."; 
-                    }
+                    if (settings.Status !== "Active") { canStart = false; msg = "The exam is currently paused."; } 
+                    else if (settings.StartTime && now < startTime) { canStart = false; msg = "The exam has not started yet."; } 
+                    else if (settings.EndTime && now > endTime) { canStart = false; msg = "The exam time has ended."; }
                     
                     if (!canStart) {
                         document.getElementById('loading-text').innerText = msg;
@@ -303,217 +249,79 @@
                 });
         };
 
-        // --- 6. DYNAMIC TIMER ---
-        function startTimer() {
-            if (timeRemaining <= 0) {
-                // If duration was set to 0, hide the timer text and don't run the countdown
-                document.getElementById('timer-display').innerText = "No Time Limit";
-                return;
-            }
-            
-            timerInterval = setInterval(() => {
-                timeRemaining--;
-                let m = Math.floor(timeRemaining / 60).toString().padStart(2, '0');
-                let s = (timeRemaining % 60).toString().padStart(2, '0');
-                document.getElementById('timer-display').innerText = `${m}:${s}`;
-                
-                if (timeRemaining <= 0) {
-                    clearInterval(timerInterval);
-                    alert("Time is up! Submitting automatically.");
-                    submitExam();
-                }
-            }, 1000);
-        }
-
-        // --- 2. START EXAM & ANTI-CHEAT ---
         function startExam() {
             studentProfile.name = document.getElementById('student-name').value;
             studentProfile.rollNo = document.getElementById('student-roll').value;
             studentProfile.className = document.getElementById('student-class').value;
 
-            if(!studentProfile.name || !studentProfile.rollNo) {
-                alert("Please fill all details.");
-                return;
-            }
+            if(!studentProfile.name || !studentProfile.rollNo) { alert("Please fill all details."); return; }
 
-            // Force Fullscreen
             let elem = document.documentElement;
             if (elem.requestFullscreen) { elem.requestFullscreen(); }
 
-            // Generate Dynamic Watermark
             generateWatermark(`${studentProfile.name} - ${studentProfile.rollNo}`);
 
-            // Switch UI
             document.getElementById('login-screen').style.display = 'none';
             document.getElementById('exam-screen').style.display = 'block';
 
-            // Start logic
+            renderPalette();
             loadQuestion(0);
             startTimer();
             enableVisibilityTracking();
 
-            // Start background leaderboard sync every 12 seconds
-        fetchPublicLeaderboard();
-        publicLeaderboardInterval = setInterval(fetchPublicLeaderboard, 12000);
+            fetchPublicLeaderboard();
+            publicLeaderboardInterval = setInterval(fetchPublicLeaderboard, 12000);
         }
 
-        // --- 3. DYNAMIC WATERMARKING ---
-        function generateWatermark(text) {
-            // Creates a faint, repeating SVG background pattern
-            const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="250" height="150">
-                <text x="10" y="100" transform="rotate(-30 100 100)" fill="rgba(0,0,0,0.06)" font-size="18" font-family="Arial">${text}</text>
-            </svg>`;
-            const encoded = btoa(svg);
-            document.getElementById('watermark-layer').style.backgroundImage = `url(data:image/svg+xml;base64,${encoded})`;
+        // --- PALETTE LOGIC (Auto-hide built in) ---
+        function togglePalette() {
+            const box = document.getElementById('palette-box-wrapper');
+            isPaletteOpen = !isPaletteOpen;
+            box.style.display = isPaletteOpen ? 'block' : 'none';
+            document.getElementById('pal-badge').innerText = isPaletteOpen ? '(Tap to hide)' : '(Tap)';
+            
+            if(isPaletteOpen && isLeaderboardOpen) toggleStudentLeaderboard(); // Close leaderboard if open
         }
 
-        // --- 4. VISIBILITY TRACKING (Tab Switching) ---
-        function enableVisibilityTracking() {
-            document.addEventListener("visibilitychange", () => {
-                if (document.hidden) {
-                    warningsCount++;
-                    document.getElementById('warning-display').innerText = warningsCount;
-                    alert(`WARNING: You have switched tabs or minimized the exam. This is warning ${warningsCount}.`);
-                    
-                    if(warningsCount >= 3) {
-                        alert("Maximum warnings reached. Auto-submitting exam.");
-                        submitExam();
-                    }
-                }
+        function renderPalette() {
+            const palette = document.getElementById('question-palette');
+            palette.innerHTML = '';
+            questionsData.forEach((_, idx) => {
+                const btn = document.createElement('div');
+                btn.className = 'palette-btn';
+                btn.id = `pal-btn-${idx}`;
+                btn.innerText = idx + 1;
+                btn.onclick = () => jumpToQuestion(idx);
+                palette.appendChild(btn);
             });
         }
 
-        // --- 5. EXAM ENGINE ---
-        function loadQuestion(index) {
-            const q = questionsData[index];
-            document.getElementById('question-text').innerText = `Q${index + 1}. ${q.Question}`;
-            
-            // Handle Images
-            const imgEl = document.getElementById('question-image');
-            if (q.ImageURL && q.ImageURL.trim() !== "") {
-                imgEl.src = q.ImageURL;
-                imgEl.style.display = 'block';
-            } else {
-                imgEl.style.display = 'none';
-            }
-
-            // Handle Options
-            const optsContainer = document.getElementById('options-container');
-            optsContainer.innerHTML = '';
-            
-            ['OptionA', 'OptionB', 'OptionC', 'OptionD'].forEach(opt => {
-                if(q[opt]) {
-                    const isChecked = studentAnswers[q.Q_ID] === opt ? "checked" : "";
-                    optsContainer.innerHTML += `
-                        <label class="option-label">
-                            <input type="radio" name="q${q.Q_ID}" value="${opt}" ${isChecked} 
-                                   onchange="saveAnswer('${q.Q_ID}', '${opt}')">
-                            ${q[opt]}
-                        </label>`;
-                }
-            });
-
-            // Button visibility
-            document.getElementById('btn-prev').disabled = (index === 0);
-            
-            if (index === questionsData.length - 1) {
-                document.getElementById('btn-next').style.display = 'none';
-                document.getElementById('btn-submit').style.display = 'block';
-            } else {
-                document.getElementById('btn-next').style.display = 'block';
-                document.getElementById('btn-submit').style.display = 'none';
-            }
-        }
-
-    function saveAnswer(qId, selectedOption) {
-            studentAnswers[qId] = selectedOption;
-            sendLivePulse(); // NEW: Updates teacher dashboard when they click an answer
-        }
-
-        function changeQuestion(step) {
-            currentQIndex += step;
+        function jumpToQuestion(index) {
+            currentQIndex = index;
             loadQuestion(currentQIndex);
-            sendLivePulse(); // NEW: Updates teacher dashboard when they click Next
+            sendLivePulse(); 
+            if(isPaletteOpen) togglePalette(); // AUTO-HIDE feature
         }
 
-        // --- 6. TIMER ---
-       
-
-        // --- 7. SUBMIT TO GOOGLE SHEETS ---
-      
-// --- 7. SUBMIT TO GOOGLE SHEETS ---
-        function submitExam() {
-            clearInterval(timerInterval);
-            clearInterval(publicLeaderboardInterval); // Stop live polling
-            document.getElementById('exam-screen').innerHTML = "<h3>Submitting your exam... Please wait.</h3>";
-
-            // Bulletproof Final Score Calculation
-            let finalScore = 0;
-            questionsData.forEach(q => {
-                let studentAns = studentAnswers[q.Q_ID] || "";
-                let correctAns = q.CorrectAnswer || "";
-                
-                if (studentAns.trim().toLowerCase() === correctAns.trim().toLowerCase() && studentAns !== "") {
-                    finalScore++;
-                }
-            });
-
-            const payload = {
-                name: studentProfile.name,
-                rollNo: studentProfile.rollNo,
-                className: studentProfile.className,
-                score: finalScore,
-                warnings: warningsCount,
-                answerScript: studentAnswers
-            };
-
-            fetch(WEB_APP_URL, {
-                method: 'POST',
-                mode: 'no-cors',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            }).then(() => {
-                document.getElementById('exam-screen').innerHTML = `
-                    <h3>Exam Submitted Successfully!</h3>
-                    <p>Your Final Score is: <strong>${finalScore}</strong></p>
-                    <p>You may now close this window.</p>`;
-            }).catch(err => {
-                alert("Network error during submission. Contact your teacher.");
+        function updatePaletteUI() {
+            questionsData.forEach((q, idx) => {
+                const btn = document.getElementById(`pal-btn-${idx}`);
+                if (!btn) return;
+                btn.className = 'palette-btn';
+                if (studentAnswers[q.Q_ID]) btn.classList.add('answered');
+                if (idx === currentQIndex) btn.classList.add('current');
             });
         }
 
-
-        // --- 8. LIVE PULSE TRACKER ---
-      // --- 8. LIVE PULSE TRACKER ---
-        function sendLivePulse() {
-            // Bulletproof Score Calculation
-            let currentScore = 0;
-            questionsData.forEach(q => {
-                let studentAns = studentAnswers[q.Q_ID] || "";
-                let correctAns = q.CorrectAnswer || "";
-                
-                // .trim() removes invisible spaces, .toLowerCase() ignores capitals
-                if (studentAns.trim().toLowerCase() === correctAns.trim().toLowerCase() && studentAns !== "") {
-                    currentScore++;
-                }
-            });
-            
-            const url = `${WEB_APP_URL}?action=updateLive&roll=${studentProfile.rollNo}&name=${encodeURIComponent(studentProfile.name)}&q=${currentQIndex + 1}&score=${currentScore}`;
-            fetch(url, { mode: 'no-cors' }).catch(e => console.log("Pulse skipped")); 
-        }
-
-        let publicLeaderboardInterval;
-        let isLeaderboardOpen = false;
-
+        // --- LEADERBOARD LOGIC & FLASH ANNOUNCEMENT ---
         function toggleStudentLeaderboard() {
             const box = document.getElementById('student-leaderboard-box');
             isLeaderboardOpen = !isLeaderboardOpen;
             box.style.display = isLeaderboardOpen ? 'block' : 'none';
-            document.getElementById('lb-badge').innerText = isLeaderboardOpen ? '(Tap to hide)' : '(Tap to view)';
+            document.getElementById('lb-badge').innerText = isLeaderboardOpen ? '(Tap to hide)' : '(Tap)';
             
-            if (isLeaderboardOpen) {
-                fetchPublicLeaderboard();
-            }
+            if(isLeaderboardOpen && isPaletteOpen) togglePalette(); // Close palette if open
+            if(isLeaderboardOpen) fetchPublicLeaderboard();
         }
 
         function fetchPublicLeaderboard() {
@@ -530,10 +338,13 @@
                             return;
                         }
 
+                        // FLASH ANNOUNCEMENT LOGIC (Triggers when data arrives)
+                        const topStudent = res.data[0];
+                        triggerTopScorerFlash(topStudent);
+
                         res.data.forEach((entry, idx) => {
                             const isMe = (entry.name.toLowerCase() === studentProfile.name.toLowerCase());
                             const rankMedal = idx === 0 ? "🥇 1" : (idx === 1 ? "🥈 2" : (idx === 2 ? "🥉 3" : `#${idx + 1}`));
-
                             tbody.innerHTML += `
                                 <tr class="${isMe ? 'my-rank-row' : ''}">
                                     <td>${rankMedal}</td>
@@ -544,8 +355,130 @@
                             `;
                         });
                     }
-                })
-                .catch(() => console.log("Public leaderboard sync delayed."));
+                }).catch(() => console.log("Leaderboard sync delayed."));
+        }
+
+        function triggerTopScorerFlash(topStudent) {
+            const flash = document.getElementById('top-scorer-flash');
+            if(topStudent.score > 0) { // Only show if someone actually has points
+                flash.innerText = `🔥 Current Highest Scorer: ${topStudent.name} | Score: ${topStudent.score} | Attempted up to Q${topStudent.q}`;
+                flash.style.display = 'block';
+                
+                // Restart animation
+                flash.style.animation = 'none';
+                flash.offsetHeight; // trigger reflow
+                flash.style.animation = 'slowBlink 5s ease-in-out forwards';
+                
+                // Hide after animation finishes
+                setTimeout(() => { flash.style.display = 'none'; }, 4900);
+            }
+        }
+
+        function generateWatermark(text) {
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="250" height="150">
+                <text x="10" y="100" transform="rotate(-30 100 100)" fill="rgba(0,0,0,0.06)" font-size="18" font-family="Arial">${text}</text>
+            </svg>`;
+            const encoded = btoa(svg);
+            document.getElementById('watermark-layer').style.backgroundImage = `url(data:image/svg+xml;base64,${encoded})`;
+        }
+
+        function enableVisibilityTracking() {
+            document.addEventListener("visibilitychange", () => {
+                if (document.hidden) {
+                    warningsCount++;
+                    document.getElementById('warning-display').innerText = warningsCount;
+                    alert(`WARNING: You have switched tabs or minimized the exam. This is warning ${warningsCount}.`);
+                    if(warningsCount >= 3) { alert("Maximum warnings reached. Auto-submitting."); submitExam(); }
+                }
+            });
+        }
+
+        function loadQuestion(index) {
+            const q = questionsData[index];
+            document.getElementById('question-text').innerText = `Q${index + 1}. ${q.Question}`;
+            
+            const imgEl = document.getElementById('question-image');
+            if (q.ImageURL && q.ImageURL.trim() !== "") { imgEl.src = q.ImageURL; imgEl.style.display = 'block'; } 
+            else { imgEl.style.display = 'none'; }
+
+            const optsContainer = document.getElementById('options-container');
+            optsContainer.innerHTML = '';
+            
+            ['OptionA', 'OptionB', 'OptionC', 'OptionD'].forEach(opt => {
+                if(q[opt]) {
+                    const isChecked = studentAnswers[q.Q_ID] === opt ? "checked" : "";
+                    optsContainer.innerHTML += `
+                        <label class="option-label">
+                            <input type="radio" name="q${q.Q_ID}" value="${opt}" ${isChecked} onchange="saveAnswer('${q.Q_ID}', '${opt}')">
+                            ${q[opt]}
+                        </label>`;
+                }
+            });
+
+            document.getElementById('btn-prev').disabled = (index === 0);
+            document.getElementById('btn-next').disabled = (index === questionsData.length - 1);
+            updatePaletteUI();
+        }
+
+        function saveAnswer(qId, selectedOption) {
+            studentAnswers[qId] = selectedOption;
+            updatePaletteUI(); sendLivePulse();
+        }
+
+        function changeQuestion(step) {
+            currentQIndex += step;
+            loadQuestion(currentQIndex);
+            sendLivePulse();
+        }
+
+        function startTimer() {
+            if (timeRemaining <= 0) { document.getElementById('timer-display').innerText = "No Time Limit"; return; }
+            timerInterval = setInterval(() => {
+                timeRemaining--;
+                let m = Math.floor(timeRemaining / 60).toString().padStart(2, '0');
+                let s = (timeRemaining % 60).toString().padStart(2, '0');
+                document.getElementById('timer-display').innerText = `${m}:${s}`;
+                if (timeRemaining <= 0) { clearInterval(timerInterval); alert("Time is up! Submitting automatically."); submitExam(); }
+            }, 1000);
+        }
+
+        function submitExam() {
+            if (!confirm("Are you sure you want to submit your exam? You cannot change your answers after this.")) return;
+            clearInterval(timerInterval); clearInterval(publicLeaderboardInterval); 
+            document.getElementById('exam-screen').innerHTML = "<h3>Submitting your exam... Please wait.</h3>";
+
+            let finalScore = 0;
+            questionsData.forEach(q => {
+                let studentAns = studentAnswers[q.Q_ID] || "";
+                let correctAns = q.CorrectAnswer || "";
+                if (studentAns.trim().toLowerCase() === correctAns.trim().toLowerCase() && studentAns !== "") finalScore++;
+            });
+
+            const payload = {
+                name: studentProfile.name, rollNo: studentProfile.rollNo, className: studentProfile.className,
+                score: finalScore, warnings: warningsCount, answerScript: studentAnswers
+            };
+
+            fetch(WEB_APP_URL, {
+                method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            }).then(() => {
+                document.getElementById('exam-screen').innerHTML = `
+                    <h3>Exam Submitted Successfully!</h3>
+                    <p>Your Final Score is: <strong>${finalScore}</strong></p>
+                    <p>You may now close this window.</p>`;
+            }).catch(err => { alert("Network error during submission. Contact your teacher."); });
+        }
+
+        function sendLivePulse() {
+            let currentScore = 0;
+            questionsData.forEach(q => {
+                let studentAns = studentAnswers[q.Q_ID] || "";
+                let correctAns = q.CorrectAnswer || "";
+                if (studentAns.trim().toLowerCase() === correctAns.trim().toLowerCase() && studentAns !== "") currentScore++;
+            });
+            const url = `${WEB_APP_URL}?action=updateLive&roll=${studentProfile.rollNo}&name=${encodeURIComponent(studentProfile.name)}&q=${currentQIndex + 1}&score=${currentScore}`;
+            fetch(url, { mode: 'no-cors' }).catch(e => console.log("Pulse skipped")); 
         }
     </script>
 </body>
