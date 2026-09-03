@@ -33,16 +33,21 @@
             background: white; max-width: 800px; margin: auto; padding: 30px; border-radius: 8px;
         }
         .modal-actions { display: flex; gap: 10px; margin-bottom: 20px; }
-        .btn-whatsapp { background-color: #25D366; } /* WhatsApp Green */
+        .btn-whatsapp { background-color: #25D366; } 
         .btn-close { background-color: #e63946; }
 
-        /* The specific area to be converted to PDF */
         #pdf-content { padding: 20px; }
         .pdf-header { text-align: center; border-bottom: 2px solid #ccc; padding-bottom: 10px; margin-bottom: 20px; }
         .q-block { margin-bottom: 15px; padding: 10px; border: 1px solid #eee; border-radius: 5px; }
         .correct { color: green; font-weight: bold; }
         .incorrect { color: red; font-weight: bold; }
         .filters { display: flex; gap: 15px; margin-top: 15px; }
+
+        /* NEW: Question Palette for Teacher */
+        .palette-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(42px, 1fr)); gap: 8px; margin-bottom: 15px; }
+        .palette-btn { padding: 10px 0; text-align: center; border-radius: 5px; border: 1px solid #ccc; background: #f8f9fa; cursor: pointer; font-weight: bold; font-size: 14px; transition: 0.2s; }
+        .palette-btn:hover { background: #e9ecef; }
+        .palette-btn.current { background: #457b9d; color: white; border-color: #1d3557; }
     </style>
 </head>
 <body>
@@ -54,8 +59,8 @@
         <p id="login-msg" style="color: red;"></p>
     </div>
 
-
-<div class="card" id="settings-section" style="display:none; margin-bottom: 20px;">
+    <!-- SETTINGS SECTION -->
+    <div class="card" id="settings-section" style="display:none; margin-bottom: 20px;">
         <h2>Live Exam Controls</h2>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
             <div>
@@ -77,7 +82,6 @@
                 <label>End Time:</label>
                 <input type="datetime-local" id="set-end">
             </div>
-
             <div style="grid-column: 1 / -1;">
                 <label>Teacher's Notice (Topic, Class, Time):</label>
                 <textarea id="set-notice" rows="3" style="width: 100%; padding: 10px; margin-top: 5px;" placeholder="E.g., Class X Biology Exam: Cell Division. Starts at 10:00 AM."></textarea>
@@ -87,16 +91,48 @@
         <span id="settings-msg" style="margin-left: 10px; font-weight: bold; color: green;"></span>
     </div>
     
-    <!-- Your existing dashboard-section goes below this -->
+    <!-- LIVE LEADERBOARD SECTION -->
+    <div class="card" id="live-section" style="display:none; margin-bottom: 20px; border-left: 5px solid #d90429;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <h2 style="margin: 0; color: #d90429;">🔴 Live Exam Leaderboard</h2>
+                <button onclick="clearLiveLeaderboard()" style="background-color: #e63946; padding: 6px 12px; font-size: 0.85em;">Clear Data for New Exam</button>
+            </div>
+            <span id="live-refresh-timer" style="font-size: 0.9em; color: gray;">Refreshing in 10s...</span>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Name (Roll)</th>
+                    <th>Current Question</th>
+                    <th>Live Score</th>
+                    <th>Last Active</th>
+                </tr>
+            </thead>
+            <tbody id="live-table-body"></tbody>
+        </table>
+    </div>
 
-    <div class="card" id="dashboard-section" style="display:none;">
-        <h2>Exam Results Dashboard</h2>
+    <!-- NEW: LIVE QUESTION BANK VIEWER -->
+    <div class="card" id="question-bank-section" style="display:none; margin-bottom: 20px; border-left: 5px solid #457b9d;">
+        <h2 style="margin-top: 0; color: #1d3557;">📖 Question Bank Viewer</h2>
+        <p style="font-size: 0.9em; color: gray; margin-top: -10px;">Click a number on the palette to see exactly what question students are currently looking at.</p>
         
+        <div class="palette-grid" id="teacher-palette"></div>
+        
+        <div id="teacher-q-display" style="background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #dee2e6; min-height: 100px;">
+            <em>Select a question from the palette above to view it here.</em>
+        </div>
+    </div>
+
+    <!-- COMPLETED EXAMS DASHBOARD -->
+    <div class="card" id="dashboard-section" style="display:none;">
+        <h2>Completed Exam Results</h2>
         <div class="filters">
             <input type="text" id="filter-class" placeholder="Filter by Class" onkeyup="renderTable()">
             <input type="text" id="filter-date" placeholder="Filter by Date (YYYY-MM-DD)" onkeyup="renderTable()">
         </div>
-
         <table id="results-table">
             <thead>
                 <tr>
@@ -112,30 +148,6 @@
             <tbody id="table-body"></tbody>
         </table>
     </div>
-<div class="card" id="live-section" style="display:none; margin-bottom: 20px; border-left: 5px solid #d90429;">
-        
-<div style="display: flex; justify-content: space-between; align-items: center;">
-            <div style="display: flex; align-items: center; gap: 15px;">
-                <h2 style="margin: 0; color: #d90429;">🔴 Live Exam Leaderboard</h2>
-                <button onclick="clearLiveLeaderboard()" style="background-color: #e63946; padding: 6px 12px; font-size: 0.85em;">Clear Data for New Exam</button>
-            </div>
-            <span id="live-refresh-timer" style="font-size: 0.9em; color: gray;">Refreshing in 10s...</span>
-        </div>
-
-        <table>
-            <thead>
-                <tr>
-                    <th>Rank</th>
-                    <th>Name (Roll)</th>
-                    <th>Current Question</th>
-                    <th>Live Score</th>
-                    <th>Last Active</th>
-                </tr>
-            </thead>
-            <tbody id="live-table-body"></tbody>
-        </table>
-    </div>
-
 
     <!-- The Answer Script Modal -->
     <div id="script-modal">
@@ -146,7 +158,6 @@
                 <button class="btn-whatsapp" onclick="shareWhatsApp()">2. Share via WhatsApp</button>
             </div>
             
-            <!-- This specific div gets converted to the PDF -->
             <div id="pdf-content">
                 <div class="pdf-header">
                     <h2>.............</h2>
@@ -159,13 +170,14 @@
     </div>
 
     <script>
-        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxNvXHADMVIGy7DR9qTx1PjGIwkvgVDEgQDop6mXl3FGWUUh3OgsppKpod_4CoBclUK6w/exec"; // Paste your script URL here
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxNvXHADMVIGy7DR9qTx1PjGIwkvgVDEgQDop6mXl3FGWUUh3OgsppKpod_4CoBclUK6w/exec"; 
         
         let allResults = [];
         let questionsData = [];
         let currentStudent = null;
+        let liveRefreshInterval;
 
-    function login() {
+        function login() {
             const pass = document.getElementById('admin-pass').value;
             document.getElementById('login-msg').innerText = "Authenticating & Loading data...";
             
@@ -184,13 +196,19 @@
                     if(resultRes.settings.StartTime) document.getElementById('set-start').value = resultRes.settings.StartTime;
                     if(resultRes.settings.EndTime) document.getElementById('set-end').value = resultRes.settings.EndTime;
                     if(resultRes.settings.Status) document.getElementById('set-status').value = resultRes.settings.Status;
-
                     if(resultRes.settings.NoticeMessage) document.getElementById('set-notice').value = resultRes.settings.NoticeMessage;
 
+                    // Unhide all panels
                     document.getElementById('login-section').style.display = 'none';
                     document.getElementById('settings-section').style.display = 'block';
+                    document.getElementById('live-section').style.display = 'block';
+                    document.getElementById('question-bank-section').style.display = 'block';
                     document.getElementById('dashboard-section').style.display = 'block';
+                    
+                    // Initialize Data
                     renderTable();
+                    renderTeacherPalette(); 
+                    startLiveTracker(); // Activates the 10s auto-refresh
                 });
         }
 
@@ -200,9 +218,8 @@
             const start = document.getElementById('set-start').value;
             const end = document.getElementById('set-end').value;
             const status = document.getElementById('set-status').value;
-
-            document.getElementById('settings-msg').innerText = "Saving...";
             
+            document.getElementById('settings-msg').innerText = "Saving...";
             const notice = encodeURIComponent(document.getElementById('set-notice').value);
             
             fetch(`${WEB_APP_URL}?action=updateSettings&password=${pass}&duration=${duration}&startTime=${start}&endTime=${end}&status=${status}&notice=${notice}`)
@@ -215,150 +232,62 @@
                 });
         }
 
-        function renderTable() {
-            const filterClass = document.getElementById('filter-class').value.toLowerCase();
-            const filterDate = document.getElementById('filter-date').value.toLowerCase();
-            const tbody = document.getElementById('table-body');
-            tbody.innerHTML = "";
-
-            allResults.forEach((student, index) => {
-                const dateStr = new Date(student.Timestamp).toLocaleDateString();
-                
-                // Filtering Logic
-                if (student.Class.toLowerCase().includes(filterClass) && dateStr.includes(filterDate)) {
-                    tbody.innerHTML += `
-                        <tr>
-                            <td>${dateStr}</td>
-                            <td>${student.Name}</td>
-                            <td>${student.Roll_No}</td>
-                            <td>${student.Class}</td>
-                            <td><strong>${student.Score}</strong></td>
-                            <td style="color: ${student.Warnings > 0 ? 'red' : 'black'};">${student.Warnings}</td>
-                            <td><button onclick="viewScript(${index})">View Script</button></td>
-                        </tr>
-                    `;
-                }
+        // --- NEW: RENDER TEACHER'S QUESTION PALETTE ---
+        function renderTeacherPalette() {
+            const palette = document.getElementById('teacher-palette');
+            palette.innerHTML = '';
+            questionsData.forEach((_, idx) => {
+                const btn = document.createElement('div');
+                btn.className = 'palette-btn';
+                btn.id = `t-pal-btn-${idx}`;
+                btn.innerText = idx + 1;
+                btn.onclick = () => viewTeacherQuestion(idx);
+                palette.appendChild(btn);
             });
         }
 
-      function viewScript(index) {
-            currentStudent = allResults[index];
-            const answers = JSON.parse(currentStudent.Answer_Script); 
+        // --- NEW: DISPLAY SELECTED QUESTION ---
+        // --- NEW: DISPLAY SELECTED QUESTION ---
+        function viewTeacherQuestion(index) {
+            // Highlight the clicked button in blue
+            questionsData.forEach((_, idx) => {
+                const btn = document.getElementById(`t-pal-btn-${idx}`);
+                if (btn) btn.className = (idx === index) ? 'palette-btn current' : 'palette-btn';
+            });
+
+            const q = questionsData[index];
+            let html = `<p style="font-size: 1.1em; margin-top: 0;"><strong>Q${index + 1}.</strong> ${q.Question}</p>`;
             
-            document.getElementById('student-details-header').innerHTML = `
-                <strong>Name:</strong> ${currentStudent.Name} &nbsp;|&nbsp; 
-                <strong>Roll No:</strong> ${currentStudent.Roll_No} &nbsp;|&nbsp; 
-                <strong>Score:</strong> ${currentStudent.Score}
-            `;
-
-            let scriptHTML = "";
-            questionsData.forEach((q, i) => {
-                const studentAnsKey = answers[q.Q_ID]; 
-                const isAttempted = !!studentAnsKey; 
-                const isCorrect = (studentAnsKey === q.CorrectAnswer);
-                
-                const statusClass = isCorrect ? "correct" : "incorrect";
-                const statusIcon = isCorrect ? "✓" : (isAttempted ? "✗" : "-");
-
-                const studentAnsText = isAttempted ? q[studentAnsKey] : "Not Attempted";
-                const correctAnsText = q[q.CorrectAnswer];
-
-                // Build the HTML for the PDF including all 4 options
-                scriptHTML += `
-                    <div class="q-block">
-                        <p style="margin-bottom: 8px;"><strong>Q${i+1}.</strong> ${q.Question}</p>
-                        
-                        <!-- The 4 Options Displayed -->
-                        <div style="margin-left: 15px; font-size: 0.95em; color: #555; margin-bottom: 12px; line-height: 1.4;">
-                            <div><strong>A)</strong> ${q.OptionA}</div>
-                            <div><strong>B)</strong> ${q.OptionB}</div>
-                            <div><strong>C)</strong> ${q.OptionC}</div>
-                            <div><strong>D)</strong> ${q.OptionD}</div>
-                        </div>
-                        
-                        <p style="margin-top: 0; margin-bottom: 4px;">Your Answer: <span class="${statusClass}">${studentAnsText} ${statusIcon}</span></p>
-                        ${!isCorrect ? `<p style="color:gray; font-size: 0.9em; margin-top: 0;">Correct Answer was: ${correctAnsText}</p>` : ''}
-                    </div>
-                `;
-            });
-
-            document.getElementById('script-body').innerHTML = scriptHTML;
-            document.getElementById('script-modal').style.display = 'block';
-        }
-
-        function closeModal() {
-            document.getElementById('script-modal').style.display = 'none';
-        }
-function downloadPDF() {
-            try {
-                // 1. Change button text safely
-                const btn = document.querySelector("button[onclick='downloadPDF()']");
-                if(btn) {
-                    btn.innerText = "⏳ Generating PDF... Please wait";
-                    btn.style.backgroundColor = "#e63946";
-                }
-
-                const element = document.getElementById('pdf-content');
-                const modal = document.getElementById('script-modal');
-                
-                // 2. THE FIX: Temporarily remove scroll restrictions so the camera sees everything
-                const originalPosition = modal.style.position;
-                const originalOverflow = modal.style.overflowY;
-                modal.style.position = 'absolute';
-                modal.style.overflowY = 'visible';
-
-                // 3. Safe filename
-                const safeName = (currentStudent && currentStudent.Name) ? currentStudent.Name.replace(/[^a-zA-Z0-9]/g, "_") : "Student_Score";
-
-                const opt = {
-                    margin:       10,
-                    filename:     `${safeName}_Bio_Test.pdf`,
-                    image:        { type: 'jpeg', quality: 0.98 },
-                    html2canvas:  { scale: 2, useCORS: true, scrollY: 0 },
-                    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-                };
-
-                // 4. Generate the PDF
-                html2pdf().set(opt).from(element).save().then(() => {
-                    // Restore the modal and button
-                    modal.style.position = originalPosition;
-                    modal.style.overflowY = originalOverflow;
-                    
-                    if(btn) {
-                        btn.innerText = "1. Download PDF Script";
-                        btn.style.backgroundColor = "#1d3557";
-                    }
-                }).catch(err => {
-                    // Catch internal PDF errors
-                    modal.style.position = originalPosition;
-                    modal.style.overflowY = originalOverflow;
-                    if(btn) { btn.innerText = "1. Download PDF Script"; btn.style.backgroundColor = "#1d3557"; }
-                    alert("Your browser blocked the download. Please use Google Chrome on a computer.");
-                });
-
-            } catch (error) {
-                // Catch standard JavaScript errors so it doesn't fail silently
-                alert("System Error: " + error.message);
+            // Show diagram if exists
+            if (q.ImageURL && q.ImageURL.trim() !== "") {
+                html += `<img src="${q.ImageURL}" style="max-width: 100%; max-height: 250px; border-radius: 8px; margin-bottom: 15px; display: block;">`;
             }
+
+            // Show options and highlight correct answer (BULLETPROOF MATCHING)
+            ['OptionA', 'OptionB', 'OptionC', 'OptionD'].forEach(opt => {
+                if (q[opt]) {
+                    // This safely ignores invisible spaces and capital letters!
+                    const safeCorrectAns = (q.CorrectAnswer || "").trim().toLowerCase();
+                    const safeOpt = opt.toLowerCase();
+                    const isCorrect = (safeCorrectAns === safeOpt);
+                    
+                    const color = isCorrect ? 'green' : '#555';
+                    const weight = isCorrect ? 'bold' : 'normal';
+                    const icon = isCorrect ? '✅' : '⚪';
+                    const letter = opt.replace('Option', '');
+                    
+                    html += `<div style="margin-bottom: 8px; color: ${color}; font-weight: ${weight};">
+                                ${icon} <strong>${letter})</strong> ${q[opt]}
+                             </div>`;
+                }
+            });
+
+            document.getElementById('teacher-q-display').innerHTML = html;
         }
 
-        function shareWhatsApp() {
-            // Note: Web APIs cannot directly attach files. 
-            // This opens WhatsApp with a pre-filled message, allowing you to easily attach the PDF you just downloaded.
-            const text = encodeURIComponent(`Hello ${currentStudent.Name},\n\nYour Biology Mock Test results are ready.\nScore: ${currentStudent.Score}\n\nPlease find your detailed answer script attached below.`);
-            window.open(`https://wa.me/?text=${text}`, '_blank');
-        }
-
-        let liveRefreshInterval;
-
-        // Call this inside your existing login() function right after settings are populated:
-        // document.getElementById('live-section').style.display = 'block';
-        // startLiveTracker();
-
+        // --- LIVE TRACKER LOGIC ---
         function startLiveTracker() {
-            fetchLiveLeaderboard(); // Fetch immediately
-            
-            // Then fetch every 10 seconds automatically
+            fetchLiveLeaderboard(); 
             let countdown = 10;
             liveRefreshInterval = setInterval(() => {
                 countdown--;
@@ -395,12 +324,8 @@ function downloadPDF() {
                 }).catch(e => console.log("Live fetch skipped this cycle"));
         }
 
-
         function clearLiveLeaderboard() {
-            // Safety check so you don't accidentally click it during a test
-            if (!confirm("Are you sure you want to clear the live tracker? Only do this before starting a brand new exam!")) {
-                return;
-            }
+            if (!confirm("Are you sure you want to clear the live tracker? Only do this before starting a brand new exam!")) return;
 
             const pass = document.getElementById('admin-pass').value;
             document.getElementById('live-refresh-timer').innerText = "Clearing old data...";
@@ -415,9 +340,128 @@ function downloadPDF() {
                         alert("Error clearing data. Check your password.");
                     }
                 })
-                .catch(e => {
-                    alert("Network error while trying to clear the board.");
+                .catch(e => alert("Network error while trying to clear the board."));
+        }
+
+        // --- POST-EXAM RESULTS LOGIC ---
+        function renderTable() {
+            const filterClass = document.getElementById('filter-class').value.toLowerCase();
+            const filterDate = document.getElementById('filter-date').value.toLowerCase();
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = "";
+
+            allResults.forEach((student, index) => {
+                const dateStr = new Date(student.Timestamp).toLocaleDateString();
+                if (student.Class.toLowerCase().includes(filterClass) && dateStr.includes(filterDate)) {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${dateStr}</td>
+                            <td>${student.Name}</td>
+                            <td>${student.Roll_No}</td>
+                            <td>${student.Class}</td>
+                            <td><strong>${student.Score}</strong></td>
+                            <td style="color: ${student.Warnings > 0 ? 'red' : 'black'};">${student.Warnings}</td>
+                            <td><button onclick="viewScript(${index})">View Script</button></td>
+                        </tr>
+                    `;
+                }
+            });
+        }
+
+        function viewScript(index) {
+            currentStudent = allResults[index];
+            const answers = JSON.parse(currentStudent.Answer_Script); 
+            
+            document.getElementById('student-details-header').innerHTML = `
+                <strong>Name:</strong> ${currentStudent.Name} &nbsp;|&nbsp; 
+                <strong>Roll No:</strong> ${currentStudent.Roll_No} &nbsp;|&nbsp; 
+                <strong>Score:</strong> ${currentStudent.Score}
+            `;
+
+            let scriptHTML = "";
+            questionsData.forEach((q, i) => {
+                const studentAnsKey = answers[q.Q_ID]; 
+                const isAttempted = !!studentAnsKey; 
+                const isCorrect = (studentAnsKey === q.CorrectAnswer);
+                
+                const statusClass = isCorrect ? "correct" : "incorrect";
+                const statusIcon = isCorrect ? "✓" : (isAttempted ? "✗" : "-");
+
+                const studentAnsText = isAttempted ? q[studentAnsKey] : "Not Attempted";
+                const correctAnsText = q[q.CorrectAnswer];
+
+                scriptHTML += `
+                    <div class="q-block">
+                        <p style="margin-bottom: 8px;"><strong>Q${i+1}.</strong> ${q.Question}</p>
+                        <div style="margin-left: 15px; font-size: 0.95em; color: #555; margin-bottom: 12px; line-height: 1.4;">
+                            <div><strong>A)</strong> ${q.OptionA}</div>
+                            <div><strong>B)</strong> ${q.OptionB}</div>
+                            <div><strong>C)</strong> ${q.OptionC}</div>
+                            <div><strong>D)</strong> ${q.OptionD}</div>
+                        </div>
+                        <p style="margin-top: 0; margin-bottom: 4px;">Your Answer: <span class="${statusClass}">${studentAnsText} ${statusIcon}</span></p>
+                        ${!isCorrect ? `<p style="color:gray; font-size: 0.9em; margin-top: 0;">Correct Answer was: ${correctAnsText}</p>` : ''}
+                    </div>
+                `;
+            });
+
+            document.getElementById('script-body').innerHTML = scriptHTML;
+            document.getElementById('script-modal').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('script-modal').style.display = 'none';
+        }
+
+        function downloadPDF() {
+            try {
+                const btn = document.querySelector("button[onclick='downloadPDF()']");
+                if(btn) {
+                    btn.innerText = "⏳ Generating PDF... Please wait";
+                    btn.style.backgroundColor = "#e63946";
+                }
+
+                const element = document.getElementById('pdf-content');
+                const modal = document.getElementById('script-modal');
+                
+                const originalPosition = modal.style.position;
+                const originalOverflow = modal.style.overflowY;
+                modal.style.position = 'absolute';
+                modal.style.overflowY = 'visible';
+
+                const safeName = (currentStudent && currentStudent.Name) ? currentStudent.Name.replace(/[^a-zA-Z0-9]/g, "_") : "Student_Score";
+
+                const opt = {
+                    margin:       10,
+                    filename:     `${safeName}_Bio_Test.pdf`,
+                    image:        { type: 'jpeg', quality: 0.98 },
+                    html2canvas:  { scale: 2, useCORS: true, scrollY: 0 },
+                    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                };
+
+                html2pdf().set(opt).from(element).save().then(() => {
+                    modal.style.position = originalPosition;
+                    modal.style.overflowY = originalOverflow;
+                    
+                    if(btn) {
+                        btn.innerText = "1. Download PDF Script";
+                        btn.style.backgroundColor = "#1d3557";
+                    }
+                }).catch(err => {
+                    modal.style.position = originalPosition;
+                    modal.style.overflowY = originalOverflow;
+                    if(btn) { btn.innerText = "1. Download PDF Script"; btn.style.backgroundColor = "#1d3557"; }
+                    alert("Your browser blocked the download. Please use Google Chrome on a computer.");
                 });
+
+            } catch (error) {
+                alert("System Error: " + error.message);
+            }
+        }
+
+        function shareWhatsApp() {
+            const text = encodeURIComponent(`Hello ${currentStudent.Name},\n\nYour Biology Mock Test results are ready.\nScore: ${currentStudent.Score}\n\nPlease find your detailed answer script attached below.`);
+            window.open(`https://wa.me/?text=${text}`, '_blank');
         }
     </script>
 </body>
