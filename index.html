@@ -170,6 +170,12 @@
         <!-- 1. LOGIN SCREEN -->
         <div id="login-screen" class="card">
             <h2>Biology MCQ Portal</h2>
+
+            <!-- TEACHER NOTICE BOARD -->
+            <div id="notice-board" style="display:none; background-color: #e9f5ed; border-left: 4px solid #2d6a4f; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
+                <h4 style="margin-top: 0; color: #1b4332;">📢 Exam Notice</h4>
+                <p id="notice-text" style="margin-bottom: 0; font-size: 14.5px; line-height: 1.5; white-space: pre-wrap;"></p>
+            </div>
             <p id="loading-text">Loading exam data... Please wait.</p>
             
             <div id="login-form" style="display:none;">
@@ -258,6 +264,14 @@
                     let examDuration = parseInt(settings.Duration);
                     if(isNaN(examDuration)) examDuration = 60;
                     timeRemaining = examDuration * 60;
+
+                    // Check and display the Teacher's Notice
+                    if (settings.NoticeMessage && settings.NoticeMessage.trim() !== "") {
+                        document.getElementById('notice-text').innerText = settings.NoticeMessage;
+                        document.getElementById('notice-board').style.display = 'block';
+                    } else {
+                        document.getElementById('notice-board').style.display = 'none';
+                    }
 
                     // Validate Time Window & Status
                     const now = new Date().getTime();
