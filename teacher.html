@@ -77,6 +77,11 @@
                 <label>End Time:</label>
                 <input type="datetime-local" id="set-end">
             </div>
+
+            <div style="grid-column: 1 / -1;">
+                <label>Teacher's Notice (Topic, Class, Time):</label>
+                <textarea id="set-notice" rows="3" style="width: 100%; padding: 10px; margin-top: 5px;" placeholder="E.g., Class X Biology Exam: Cell Division. Starts at 10:00 AM."></textarea>
+            </div>
         </div>
         <button onclick="saveSettings()" style="margin-top: 15px; background-color: #2a9d8f;">Save Exam Settings</button>
         <span id="settings-msg" style="margin-left: 10px; font-weight: bold; color: green;"></span>
@@ -180,6 +185,8 @@
                     if(resultRes.settings.EndTime) document.getElementById('set-end').value = resultRes.settings.EndTime;
                     if(resultRes.settings.Status) document.getElementById('set-status').value = resultRes.settings.Status;
 
+                    if(resultRes.settings.NoticeMessage) document.getElementById('set-notice').value = resultRes.settings.NoticeMessage;
+
                     document.getElementById('login-section').style.display = 'none';
                     document.getElementById('settings-section').style.display = 'block';
                     document.getElementById('dashboard-section').style.display = 'block';
@@ -196,7 +203,9 @@
 
             document.getElementById('settings-msg').innerText = "Saving...";
             
-            fetch(`${WEB_APP_URL}?action=updateSettings&password=${pass}&duration=${duration}&startTime=${start}&endTime=${end}&status=${status}`)
+            const notice = encodeURIComponent(document.getElementById('set-notice').value);
+            
+            fetch(`${WEB_APP_URL}?action=updateSettings&password=${pass}&duration=${duration}&startTime=${start}&endTime=${end}&status=${status}&notice=${notice}`)
                 .then(res => res.json())
                 .then(result => {
                     if (result.status === "success") {
@@ -280,17 +289,57 @@
         function closeModal() {
             document.getElementById('script-modal').style.display = 'none';
         }
+function downloadPDF() {
+            try {
+                // 1. Change button text safely
+                const btn = document.querySelector("button[onclick='downloadPDF()']");
+                if(btn) {
+                    btn.innerText = "⏳ Generating PDF... Please wait";
+                    btn.style.backgroundColor = "#e63946";
+                }
 
-        function downloadPDF() {
-            const element = document.getElementById('pdf-content');
-            const opt = {
-                margin:       10,
-                filename:     `${currentStudent.Name}_Bio_Test.pdf`,
-                image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2 },
-                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-            };
-            html2pdf().set(opt).from(element).save();
+                const element = document.getElementById('pdf-content');
+                const modal = document.getElementById('script-modal');
+                
+                // 2. THE FIX: Temporarily remove scroll restrictions so the camera sees everything
+                const originalPosition = modal.style.position;
+                const originalOverflow = modal.style.overflowY;
+                modal.style.position = 'absolute';
+                modal.style.overflowY = 'visible';
+
+                // 3. Safe filename
+                const safeName = (currentStudent && currentStudent.Name) ? currentStudent.Name.replace(/[^a-zA-Z0-9]/g, "_") : "Student_Score";
+
+                const opt = {
+                    margin:       10,
+                    filename:     `${safeName}_Bio_Test.pdf`,
+                    image:        { type: 'jpeg', quality: 0.98 },
+                    html2canvas:  { scale: 2, useCORS: true, scrollY: 0 },
+                    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                };
+
+                // 4. Generate the PDF
+                html2pdf().set(opt).from(element).save().then(() => {
+                    // Restore the modal and button
+                    modal.style.position = originalPosition;
+                    modal.style.overflowY = originalOverflow;
+                    
+                    if(btn) {
+                        btn.innerText = "1. Download PDF Script";
+                        btn.style.backgroundColor = "#1d3557";
+                    }
+                }).catch(err => {
+                    // Catch internal PDF errors
+                    modal.style.position = originalPosition;
+                    modal.style.overflowY = originalOverflow;
+                    if(btn) { btn.innerText = "1. Download PDF Script"; btn.style.backgroundColor = "#1d3557"; }
+                    alert("Your browser blocked the download. Please use Google Chrome on a computer.");
+                });
+
+            } catch (error) {
+                // Catch standard JavaScript errors so it doesn't fail silently
+                alert("System Error: " + error.message);
+            }
         }
 
         function shareWhatsApp() {
